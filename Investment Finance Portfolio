@@ -1,0 +1,147 @@
+---
+title: "Investment Finance Portfolio"
+output: html_document
+date: "2023-10-22"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readr)
+library(tidyverse)
+library(lubridate)
+library(scales)
+
+
+```
+
+
+```{r}
+
+Willshire5000<-read_csv("https://query1.finance.yahoo.com/v7/finance/download/%5EW5000?period1=1540245952&period2=1698012339&interval=1d&events=history&includeAdjustedClose=true")
+
+SPDR_Gold_Shares<-read_csv("https://query1.finance.yahoo.com/v7/finance/download/GLD?period1=1540246015&period2=1698012411&interval=1d&events=history&includeAdjustedClose=true")
+
+OJ_Futures<-read_csv("https://query1.finance.yahoo.com/v7/finance/download/OJ%3DF?period1=1540246081&period2=1698012461&interval=1d&events=history&includeAdjustedClose=true")
+
+T_Bill<-read_csv("https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/2023/all?type=daily_treasury_bill_rates&field_tdr_date_value=2023&page&_format=csv")
+
+
+
+```
+```{r}
+
+for (i in 2:7) {
+  Willshire5000[i]<-as.numeric(Willshire5000[[i]])
+}
+
+Willshire5000<-Willshire5000%>%
+  mutate(Date=ymd(Date))%>%
+  arrange((Date))%>%
+  mutate(HPR_Percent_Change =(`Adj Close` - Open)/Open)%>%
+  mutate(EAR_Percent_Change =((1+HPR_Percent_Change)^365)-1)
+
+head(Willshire5000)
+
+```
+```{r}
+for (i in 2:7) {
+  SPDR_Gold_Shares[i]<-as.numeric(SPDR_Gold_Shares[[i]])
+}
+head(SPDR_Gold_Shares)
+SPDR_Gold_Shares<-SPDR_Gold_Shares%>%
+  mutate(Date=ymd(Date))%>%
+  mutate(HPR_Percent_Change =(`Adj Close` - Open)/Open)%>%
+  mutate(EAR_Percent_Change =((1+HPR_Percent_Change)^365)-1)
+
+```
+```{r}
+
+for (i in 2:7) {
+  OJ_Futures[i]<-as.numeric(OJ_Futures[[i]])
+}
+head(OJ_Futures)
+OJ_Futures<-OJ_Futures%>%
+  mutate(Date=ymd(Date))%>%
+  mutate(HPR_Percent_Change =(`Adj Close` - Open)/Open)%>%
+  mutate(EAR_Percent_Change =((1+HPR_Percent_Change))^365-1)
+```
+```{r}
+library(ggplot2)
+
+OJ_Future_PCHANGE<-OJ_Futures%>%
+  select(Date, EAR_Percent_Change)%>%
+  rename(OJ_Future_EAR=EAR_Percent_Change)
+
+Willshire5000_PCHANGE<-Willshire5000%>%
+  select(Date, EAR_Percent_Change)%>%
+  rename(Willshire5000_EAR=EAR_Percent_Change)
+
+SPDR_Gold_Shares_PCHANGE<-SPDR_Gold_Shares%>%
+  select(Date, EAR_Percent_Change)%>%
+  rename(SPDR_Gold_Shares_EAR=EAR_Percent_Change)
+
+result <- Willshire5000%>%
+  inner_join(OJ_Future_PCHANGE, by = "Date") %>%
+  inner_join(SPDR_Gold_Shares_PCHANGE, by = "Date")
+
+result
+  
+
+
+```
+
+```{r}
+
+
+Willshire5000$stock <- "Willshire5000"
+OJ_Futures$stock <- "OJ_Futures"
+SPDR_Gold_Shares$stock <- "SPDR_Gold_Shares"
+
+combined_data<-rbind(Willshire5000, OJ_Futures, SPDR_Gold_Shares)
+
+combined_data
+
+
+ggplot(data = combined_data, aes(x = Date, y = (HPR_Percent_Change*100), color = factor(stock))) +
+  geom_line() +
+  labs(
+    title = "Line Plot of Multiple Data Sets",
+    x = "X-axis",
+    y = "Y-axis",
+    color = "Dataset"
+  )+
+  scale_x_date(limits = c(as.Date("2023-10-3"),as.Date("2023-10-22")))
+
+
+```
+
+```{r}
+
+Clean_T_Bill<-T_Bill%>%
+  mutate(Date=mdy(Date))
+
+Day1<-mdy("10-03-2023")
+
+head(Clean_T_Bill)
+
+Day1_TBill<-Clean_T_Bill%>%
+  filter(Date==Day1)
+
+head(Day1_TBill)
+```
+
+```{r}
+Willshire5000%>%
+  filter(day(Date)==1)%>%
+  select(Date, Open, `Adj Close`)%>%
+  mutate(HPR = (Open - lag(Open)) / lag(Open))%>%
+  mutate(APR=HPR*12)%>%
+  mutate(EAR=(((1+HPR)^12))-1)%>%
+  summary()
+
+
+
+```
